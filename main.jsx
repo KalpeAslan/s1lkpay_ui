@@ -1,10 +1,4 @@
-import "./setup-globals.jsx";
-import "./api.jsx";
-import "./context.jsx";
-import "./auth.jsx";
-import "./tweaks-panel.jsx";
-import "./parts.jsx";
-import "./screens.jsx";
-import "./wallet.jsx";
-import "./withdraw.jsx";
-import "./app.jsx";
+import { createRoot } from "react-dom/client";
+import { App } from "./app.jsx";
+
+createRoot(document.getElementById("root")).render(<App />);
