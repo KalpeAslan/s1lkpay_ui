@@ -1,6 +1,6 @@
 import { authHeaders } from "./authHeaders.js";
 
-const BASE = "http://localhost:3000";
+const BASE = import.meta.env.VITE_API_URL || "http://194.32.140.219:2020";
 
 export { BASE };
 
