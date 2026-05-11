@@ -1,0 +1,133 @@
+/* Print layout — render all screens as separate pages */
+
+html, body { background: white; }
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+.print-page {
+  width: 1240px;
+  min-height: 880px;
+  margin: 24px auto;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  break-after: page;
+  page-break-after: always;
+}
+.print-page:last-child { break-after: auto; page-break-after: auto; }
+
+.print-page .app {
+  min-height: 880px;
+  height: 880px;
+}
+.print-page .sidebar {
+  position: relative;
+  height: auto;
+  min-height: 100%;
+}
+.print-page .topbar {
+  position: relative;
+  background: rgba(250,250,247,1);
+}
+.print-page .content {
+  padding: 20px 24px 32px;
+}
+.print-page .demo-fab,
+.print-page .view-banner,
+.print-page .toast-wrap,
+.print-page .search,
+.print-page .icon-btn { display: none !important; }
+
+.print-page .app.public {
+  height: auto;
+  min-height: 880px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.print-label {
+  position: absolute;
+  top: 14px; right: 18px;
+  font-family: "Geist Mono", monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(255,255,255,0.85);
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  z-index: 30;
+}
+.print-page.no-chrome { background: white; }
+
+/* Static modal preview */
+.print-modal-stage {
+  height: 880px;
+  display: grid; place-items: center;
+  background:
+    radial-gradient(1000px 500px at 50% 0%, oklch(0.97 0.04 35), transparent 60%),
+    var(--bg);
+  padding: 24px;
+}
+.print-modal-bg {
+  width: 100%;
+  display: grid; place-items: center;
+}
+.print-modal-bg .modal { box-shadow: 0 30px 80px -30px rgba(10,10,10,0.25); }
+
+/* Public page snapshot */
+.print-page .public-wrap {
+  background: linear-gradient(180deg, oklch(0.97 0.04 35), var(--bg));
+  padding: 24px 0 32px;
+  width: 100%;
+}
+
+@page {
+  size: A4 landscape;
+  margin: 12mm;
+}
+
+@media print {
+  html, body { background: white; }
+  body { font-size: 12px; }
+  #root { display: block; }
+  .print-page {
+    margin: 0 auto;
+    width: 100%;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    min-height: auto;
+    page-break-after: always;
+    break-after: page;
+  }
+  .print-page .app,
+  .print-page .app.public {
+    min-height: auto;
+    height: auto;
+  }
+  .print-page .sidebar { height: auto; min-height: 0; }
+  .print-page .topbar { position: static; }
+  .print-page .demo-fab,
+  .tweaks-launcher,
+  .tweaks-panel { display: none !important; }
+  .print-label {
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .print-modal-stage {
+    height: auto;
+    min-height: 0;
+    padding: 12mm 0;
+  }
+}
