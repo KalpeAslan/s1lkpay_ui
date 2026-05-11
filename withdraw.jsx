@@ -1,19 +1,25 @@
-/* global React, I, TOKENS, TokenLogo, TokenChip, fmtAmt, fmtUSD, fmtToken, shortAddr, seedBalances, tokenUSD, WALLET_ADDR, StatusPill */
-const { useState, useMemo, useEffect } = React;
+/* global React, I, TOKENS, TokenLogo, TokenChip, fmtAmt, fmtUSD, fmtToken, shortAddr, tokenUSD, StatusPill, api, queryClient, useAppCtx */
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+const { useState, useMemo } = React;
 
-// =============== Withdraw Page ===============
-function WithdrawPage({ onDone }) {
-  const [balances] = useState(() => seedBalances());
+// ─── Withdraw Page ──────────────────────────────────────────────────────────────
+
+function WithdrawPage() {
+  const navigate = useNavigate();
+  const { toast } = useAppCtx();
+  const { data: walletData, isLoading } = useQuery({
+    queryKey: ["wallet"],
+    queryFn: api.wallet,
+  });
+
+  const balances = walletData?.balances || [];
+
   const [step, setStep] = useState(0);
-  // 0 type, 1 select, 2 destination, 3 review, 4 success
-
-  const [type, setType] = useState("all"); // all | token | fiat
+  const [type, setType] = useState("all");
   const [token, setToken] = useState("USDC");
   const [amount, setAmount] = useState("");
-
-  // crypto destination
   const [destAddr, setDestAddr] = useState("");
-  // fiat destination
   const [card, setCard] = useState({
     holder: "Sandbox Merchant Ltd.",
     number: "•••• •••• •••• 2841",
@@ -23,31 +29,44 @@ function WithdrawPage({ onDone }) {
   const [addCard, setAddCard] = useState(false);
 
   const totalUSD = balances.reduce((a, b) => a + tokenUSD(b.sym, b.amount), 0);
-  const selBal = balances.find(b => b.sym === token);
+  const selBal = balances.find(b => b.sym === token) || balances[0] || { sym: token, amount: 0 };
   const numAmount = parseFloat(amount) || 0;
-  const tokAmountToSend = type === "all"
-    ? totalUSD
-    : type === "token"
-      ? numAmount
-      : numAmount; // for fiat we accept token amount input too
-  const sourceUSD = type === "all"
-    ? totalUSD
-    : tokenUSD(token, numAmount);
+  const sourceUSD = type === "all" ? totalUSD : tokenUSD(token, numAmount);
 
-  // fiat conversion
   const fxRates = { USD: 1, KZT: 458.4, VND: 25320 };
-  const fiatAmount = sourceUSD * (fxRates[card.currency] || 1);
   const fxFee = sourceUSD * 0.0095;
-  const netFiat = (sourceUSD - fxFee) * (fxRates[card.currency] || 1);
-  const networkFee = type === "fiat" ? 0 : (token === "SOL" ? 0.000005 * TOKENS.SOL.rate : 0.04);
   const serviceFee = type === "fiat" ? sourceUSD * 0.0125 : 0;
-  const finalUSD = type === "fiat"
-    ? sourceUSD - fxFee - serviceFee
-    : sourceUSD - networkFee;
+  const networkFee = type === "fiat" ? 0 : (token === "SOL" ? 0.000005 * TOKENS.SOL.rate : 0.04);
+  const finalUSD = type === "fiat" ? sourceUSD - fxFee - serviceFee : sourceUSD - networkFee;
 
   const txId = useMemo(() => "wd_" + Math.random().toString(36).slice(2, 12), []);
 
-  const next = () => setStep(s => Math.min(s + 1, 4));
+  const createWithdrawal = useMutation({
+    mutationFn: () => api.createWithdrawal({
+      type,
+      sourceAmount: sourceUSD,
+      token: type !== "all" ? token : undefined,
+      destinationAddress: type !== "fiat" ? destAddr : undefined,
+      cardNumber: type === "fiat" ? card.number : undefined,
+      cardHolder: type === "fiat" ? card.holder : undefined,
+      currency: type === "fiat" ? card.currency : undefined,
+      finalAmount: Math.max(finalUSD, 0),
+    }),
+    onSuccess: () => {
+      toast("Withdrawal initiated");
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      queryClient.invalidateQueries({ queryKey: ["withdrawals"] });
+      setStep(4);
+    },
+  });
+
+  const next = () => {
+    if (step === 3) {
+      createWithdrawal.mutate();
+    } else {
+      setStep(s => Math.min(s + 1, 4));
+    }
+  };
   const back = () => setStep(s => Math.max(s - 1, 0));
 
   const canContinue = () => {
@@ -61,6 +80,10 @@ function WithdrawPage({ onDone }) {
   };
 
   const steps = ["Type", "Assets", "Destination", "Review", "Done"];
+
+  if (isLoading) {
+    return <div style={{ padding: 48, textAlign: "center", color: "var(--muted)" }}>Loading wallet…</div>;
+  }
 
   return (
     <>
@@ -87,29 +110,50 @@ function WithdrawPage({ onDone }) {
         <div className="withdraw-card">
           <div className="withdraw-main">
             {step === 0 && <StepType type={type} setType={setType}/>}
-            {step === 1 && <StepAssets type={type} balances={balances} totalUSD={totalUSD}
-                                       token={token} setToken={setToken}
-                                       amount={amount} setAmount={setAmount}/>}
-            {step === 2 && <StepDestination type={type} destAddr={destAddr} setDestAddr={setDestAddr}
-                                            card={card} setCard={setCard}
-                                            addCard={addCard} setAddCard={setAddCard}/>}
-            {step === 3 && <StepReview
-                              type={type} token={token} balances={balances}
-                              numAmount={numAmount} totalUSD={totalUSD} sourceUSD={sourceUSD}
-                              destAddr={destAddr} card={card}
-                              fiatAmount={fiatAmount} fxFee={fxFee} netFiat={netFiat}
-                              networkFee={networkFee} serviceFee={serviceFee} finalUSD={finalUSD}/>}
-            {step === 4 && <StepDone type={type} sourceUSD={sourceUSD} finalUSD={finalUSD}
-                                     destAddr={destAddr} card={card} txId={txId} token={token}
-                                     onDone={onDone}/>}
+            {step === 1 && (
+              <StepAssets
+                type={type} balances={balances} totalUSD={totalUSD}
+                token={token} setToken={setToken}
+                amount={amount} setAmount={setAmount}
+              />
+            )}
+            {step === 2 && (
+              <StepDestination
+                type={type} destAddr={destAddr} setDestAddr={setDestAddr}
+                card={card} setCard={setCard}
+                addCard={addCard} setAddCard={setAddCard}
+              />
+            )}
+            {step === 3 && (
+              <StepReview
+                type={type} token={token} balances={balances}
+                numAmount={numAmount} totalUSD={totalUSD} sourceUSD={sourceUSD}
+                destAddr={destAddr} card={card}
+                fxFee={fxFee} networkFee={networkFee} serviceFee={serviceFee} finalUSD={finalUSD}
+              />
+            )}
+            {step === 4 && (
+              <StepDone
+                type={type} sourceUSD={sourceUSD} finalUSD={finalUSD}
+                destAddr={destAddr} card={card} txId={txId} token={token}
+                onDone={() => navigate("/dashboard")}
+              />
+            )}
 
             {step < 4 && (
               <div style={{display: "flex", gap: 8, marginTop: 28, justifyContent: "space-between"}}>
-                <button className="btn" onClick={step === 0 ? onDone : back}>
+                <button className="btn" onClick={step === 0 ? () => navigate("/dashboard") : back}>
                   <I.arrowLeft width="14" height="14"/> {step === 0 ? "Cancel" : "Back"}
                 </button>
-                <button className="btn btn-primary" disabled={!canContinue()} onClick={next}>
-                  {step === 3 ? "Confirm withdrawal" : "Continue"} <I.arrowRight width="14" height="14"/>
+                <button
+                  className="btn btn-primary"
+                  disabled={!canContinue() || createWithdrawal.isPending}
+                  onClick={next}
+                >
+                  {step === 3
+                    ? (createWithdrawal.isPending ? "Submitting…" : "Confirm withdrawal")
+                    : "Continue"}
+                  {" "}<I.arrowRight width="14" height="14"/>
                 </button>
               </div>
             )}
@@ -120,7 +164,7 @@ function WithdrawPage({ onDone }) {
             <SidebarSummary
               step={step} type={type} token={token} balances={balances}
               numAmount={numAmount} totalUSD={totalUSD} sourceUSD={sourceUSD}
-              card={card} fiatAmount={fiatAmount} fxFee={fxFee}
+              card={card} fxFee={fxFee}
               networkFee={networkFee} serviceFee={serviceFee} finalUSD={finalUSD}
               destAddr={destAddr}
             />
@@ -131,16 +175,15 @@ function WithdrawPage({ onDone }) {
   );
 }
 
-// =============== Step 0: type ===============
 function StepType({ type, setType }) {
   const options = [
-    { id: "all", title: "Withdraw all funds", desc: "Cash out every token in your wallet at once.", icon: <I.wallet width="18" height="18"/>, accent: false },
-    { id: "token", title: "Withdraw a specific token", desc: "Send a precise amount of one token to another wallet.", icon: <I.send width="18" height="18"/>, accent: false },
-    { id: "fiat", title: "Convert to fiat & withdraw to card", desc: "Sell crypto for USD, KZT, or VND and pay out to your bank card.", icon: <I.card width="18" height="18"/>, accent: true },
+    { id: "all",   title: "Withdraw all funds",               desc: "Cash out every token in your wallet at once.", icon: <I.wallet width="18" height="18"/>, accent: false },
+    { id: "crypto", title: "Withdraw a specific token",       desc: "Send a precise amount of one token to another wallet.", icon: <I.send width="18" height="18"/>, accent: false },
+    { id: "fiat",  title: "Convert to fiat & withdraw to card", desc: "Sell crypto for USD, KZT, or VND and pay out to your bank card.", icon: <I.card width="18" height="18"/>, accent: true },
   ];
   return (
     <>
-      <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em"}}>Choose withdrawal type</h3>
+      <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600}}>Choose withdrawal type</h3>
       <p style={{margin: "0 0 18px", color: "var(--muted)", fontSize: 13.5}}>How would you like to move funds out of your wallet?</p>
       <div className="option-grid">
         {options.map(o => (
@@ -155,107 +198,112 @@ function StepType({ type, setType }) {
   );
 }
 
-// =============== Step 1: assets ===============
 function StepAssets({ type, balances, totalUSD, token, setToken, amount, setAmount }) {
   if (type === "all") {
     return (
       <>
-        <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em"}}>Withdraw all funds</h3>
+        <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600}}>Withdraw all funds</h3>
         <p style={{margin: "0 0 18px", color: "var(--muted)", fontSize: 13.5}}>
-          We'll move every available balance out of your wallet. You'll choose where to send it next.
+          We'll move every available balance out of your wallet.
         </p>
-        <div className="card" style={{padding: 0, marginBottom: 12}}>
-          <div className="token-list">
-            {balances.map(b => (
-              <div className="token-row" key={b.sym}>
-                <TokenLogo sym={b.sym} size={32}/>
-                <div className="nm">{TOKENS[b.sym].name}<small>{b.sym}</small></div>
-                <div className="qty">
-                  {b.sym === "PEPE" ? fmtAmt(b.amount, 0) : fmtAmt(b.amount, b.sym === "SOL" ? 3 : 2)} {b.sym}
-                  <small>{fmtUSD(tokenUSD(b.sym, b.amount))}</small>
-                </div>
-                <div className="muted" style={{fontSize: 12}}>Included</div>
+        {balances.length === 0 ? (
+          <div className="empty"><h4>No balances available</h4>Receive payments first.</div>
+        ) : (
+          <>
+            <div className="card" style={{padding: 0, marginBottom: 12}}>
+              <div className="token-list">
+                {balances.map(b => (
+                  <div className="token-row" key={b.sym}>
+                    <TokenLogo sym={b.sym} size={32}/>
+                    <div className="nm">{TOKENS[b.sym]?.name || b.sym}<small>{b.sym}</small></div>
+                    <div className="qty">
+                      {fmtAmt(b.amount, b.sym === "SOL" ? 3 : 2)} {b.sym}
+                      <small>{fmtUSD(tokenUSD(b.sym, b.amount))}</small>
+                    </div>
+                    <div className="muted" style={{fontSize: 12}}>Included</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-        <div className="summary-total">
-          <div className="lbl">Estimated total value</div>
-          <div className="v">{fmtUSD(totalUSD)}</div>
-        </div>
+            </div>
+            <div className="summary-total">
+              <div className="lbl">Estimated total value</div>
+              <div className="v">{fmtUSD(totalUSD)}</div>
+            </div>
+          </>
+        )}
       </>
     );
   }
-  const bal = balances.find(b => b.sym === token) || balances[0];
+
+  const bal = balances.find(b => b.sym === token) || { sym: token, amount: 0 };
   const usd = tokenUSD(token, parseFloat(amount) || 0);
+
   return (
     <>
-      <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em"}}>
+      <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600}}>
         {type === "fiat" ? "Choose what to convert" : "Choose token and amount"}
       </h3>
       <p style={{margin: "0 0 18px", color: "var(--muted)", fontSize: 13.5}}>
         Pick the token to withdraw and how much.
       </p>
-      <div className="token-pick-list" style={{marginBottom: 16}}>
-        {balances.map(b => (
-          <label key={b.sym} className={"token-pick" + (token === b.sym ? " active" : "")}>
-            <input type="radio" name="tok" value={b.sym} checked={token === b.sym} onChange={() => setToken(b.sym)}/>
-            <div style={{display: "flex", alignItems: "center", gap: 10}}>
-              <TokenLogo sym={b.sym} size={28}/>
-              <div>
-                <div style={{fontWeight: 500}}>{TOKENS[b.sym].name}</div>
-                <div className="muted" style={{fontSize: 12}}>{b.sym}</div>
+      {balances.length === 0 ? (
+        <div className="empty"><h4>No balances available</h4>Receive payments first.</div>
+      ) : (
+        <>
+          <div className="token-pick-list" style={{marginBottom: 16}}>
+            {balances.map(b => (
+              <label key={b.sym} className={"token-pick" + (token === b.sym ? " active" : "")}>
+                <input type="radio" name="tok" value={b.sym} checked={token === b.sym} onChange={() => setToken(b.sym)}/>
+                <div style={{display: "flex", alignItems: "center", gap: 10}}>
+                  <TokenLogo sym={b.sym} size={28}/>
+                  <div>
+                    <div style={{fontWeight: 500}}>{TOKENS[b.sym]?.name || b.sym}</div>
+                    <div className="muted" style={{fontSize: 12}}>{b.sym}</div>
+                  </div>
+                </div>
+                <div className="qty">
+                  {fmtAmt(b.amount, b.sym === "SOL" ? 3 : 2)} {b.sym}
+                  <small>{fmtUSD(tokenUSD(b.sym, b.amount))}</small>
+                </div>
+                <div></div>
+              </label>
+            ))}
+          </div>
+          <div className="field">
+            <label>Amount <small>maximum {fmtAmt(bal.amount, bal.sym === "SOL" ? 3 : 2)} {bal.sym}</small></label>
+            <div className="amount-input">
+              <input
+                value={amount}
+                onChange={e => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                placeholder="0.00"
+                inputMode="decimal"
+              />
+              <div className="tok-pick">
+                <TokenLogo sym={token}/>{token}
+                <button className="btn btn-sm" style={{marginLeft: 8}} onClick={() => setAmount(String(bal.amount))}>Max</button>
               </div>
             </div>
-            <div className="qty">
-              {b.sym === "PEPE" ? fmtAmt(b.amount, 0) : fmtAmt(b.amount, b.sym === "SOL" ? 3 : 2)} {b.sym}
-              <small>{fmtUSD(tokenUSD(b.sym, b.amount))}</small>
+            <div className="muted" style={{fontSize: 12, marginTop: 6}}>
+              ≈ {fmtUSD(usd)}{type === "fiat" ? " before conversion fees" : ""}
             </div>
-            <div></div>
-          </label>
-        ))}
-      </div>
-
-      <div className="field">
-        <label>Amount <small>maximum {bal.sym === "PEPE" ? fmtAmt(bal.amount, 0) : fmtAmt(bal.amount, bal.sym === "SOL" ? 3 : 2)} {bal.sym}</small></label>
-        <div className="amount-input">
-          <input
-            value={amount}
-            onChange={e => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-            placeholder="0.00"
-            inputMode="decimal"
-          />
-          <div className="tok-pick">
-            <TokenLogo sym={token}/>{token}
-            <button className="btn btn-sm" style={{marginLeft: 8}} onClick={() => setAmount(String(bal.amount))}>Max</button>
           </div>
-        </div>
-        <div className="muted" style={{fontSize: 12, marginTop: 6}}>
-          ≈ {fmtUSD(usd)}{type === "fiat" ? " before conversion fees" : ""}
-        </div>
-      </div>
+        </>
+      )}
     </>
   );
 }
 
-// =============== Step 2: destination ===============
 function StepDestination({ type, destAddr, setDestAddr, card, setCard, addCard, setAddCard }) {
   if (type === "fiat") {
     return (
       <>
-        <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em"}}>Payout destination</h3>
-        <p style={{margin: "0 0 18px", color: "var(--muted)", fontSize: 13.5}}>
-          Choose a bank card to receive the converted fiat.
-        </p>
-
+        <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600}}>Payout destination</h3>
+        <p style={{margin: "0 0 18px", color: "var(--muted)", fontSize: 13.5}}>Choose a bank card to receive the converted fiat.</p>
         {!addCard ? (
           <>
             <div style={{display: "flex", gap: 14, alignItems: "center", marginBottom: 14}}>
               <div className="bank-card">
-                <div className="top">
-                  <div className="chip"></div>
-                  <div style={{fontWeight: 600, fontSize: 12, letterSpacing: "0.1em"}}>VISA</div>
-                </div>
+                <div className="top"><div className="chip"></div><div style={{fontWeight:600,fontSize:12,letterSpacing:"0.1em"}}>VISA</div></div>
                 <div className="num">{card.number}</div>
                 <div className="row">
                   <div><small>Card holder</small><br/><b>{card.holder}</b></div>
@@ -264,7 +312,6 @@ function StepDestination({ type, destAddr, setDestAddr, card, setCard, addCard, 
               </div>
               <button className="btn btn-sm" onClick={() => setAddCard(true)}><I.plus width="14" height="14"/> Add another</button>
             </div>
-
             <div className="field">
               <label>Receive currency</label>
               <div style={{display: "flex", gap: 6, flexWrap: "wrap"}}>
@@ -276,28 +323,17 @@ function StepDestination({ type, destAddr, setDestAddr, card, setCard, addCard, 
                   </button>
                 ))}
               </div>
-              <div className="muted" style={{fontSize: 12, marginTop: 6}}>
-                Funds are converted at the prevailing market rate at the moment of confirmation.
-              </div>
             </div>
           </>
         ) : (
           <>
-            <div className="field">
-              <label>Card holder name</label>
-              <input className="input" value={card.holder} onChange={e => setCard({...card, holder: e.target.value})}/>
-            </div>
-            <div className="field">
-              <label>Card number</label>
-              <input className="input" placeholder="4242 4242 4242 4242" defaultValue="4242 4242 4242 2841"/>
-            </div>
+            <div className="field"><label>Card holder name</label><input className="input" value={card.holder} onChange={e => setCard({...card, holder: e.target.value})}/></div>
+            <div className="field"><label>Card number</label><input className="input" placeholder="4242 4242 4242 4242" defaultValue="4242 4242 4242 2841"/></div>
             <div className="row-2">
               <div className="field">
                 <label>Country</label>
                 <select className="select" value={card.country} onChange={e => setCard({...card, country: e.target.value})}>
-                  <option>United States</option>
-                  <option>Kazakhstan</option>
-                  <option>Vietnam</option>
+                  <option>United States</option><option>Kazakhstan</option><option>Vietnam</option>
                 </select>
               </div>
               <div className="field">
@@ -315,12 +351,11 @@ function StepDestination({ type, destAddr, setDestAddr, card, setCard, addCard, 
       </>
     );
   }
+
   return (
     <>
-      <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em"}}>Destination wallet</h3>
-      <p style={{margin: "0 0 18px", color: "var(--muted)", fontSize: 13.5}}>
-        Send to any Solana wallet address.
-      </p>
+      <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600}}>Destination wallet</h3>
+      <p style={{margin: "0 0 18px", color: "var(--muted)", fontSize: 13.5}}>Send to any Solana wallet address.</p>
       <div className="field">
         <label>Recipient address <small>Solana</small></label>
         <input className="input mono"
@@ -334,107 +369,81 @@ function StepDestination({ type, destAddr, setDestAddr, card, setCard, addCard, 
       <div className="field">
         <label>Network</label>
         <div className="fx-row">
-          <div style={{display: "flex", alignItems: "center", gap: 8}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
             <TokenLogo sym="SOL"/>
-            <div>
-              <div style={{fontWeight: 500}}>Solana · Mainnet</div>
-              <div className="muted" style={{fontSize: 12}}>Fastest network for this token</div>
-            </div>
+            <div><div style={{fontWeight:500}}>Solana · Mainnet</div><div className="muted" style={{fontSize:12}}>Fastest network for this token</div></div>
           </div>
-          <div className="muted" style={{fontSize: 12}}>~2s · negligible fee</div>
+          <div className="muted" style={{fontSize:12}}>~2s · negligible fee</div>
         </div>
       </div>
     </>
   );
 }
 
-// =============== Step 3: review ===============
-function StepReview({ type, token, balances, numAmount, totalUSD, sourceUSD, destAddr, card, fiatAmount, fxFee, netFiat, networkFee, serviceFee, finalUSD }) {
+function StepReview({ type, token, balances, numAmount, totalUSD, sourceUSD, destAddr, card, fxFee, networkFee, serviceFee, finalUSD }) {
   return (
     <>
-      <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em"}}>Review withdrawal</h3>
-      <p style={{margin: "0 0 18px", color: "var(--muted)", fontSize: 13.5}}>
-        Confirm the details. You can cancel before signing.
-      </p>
-
+      <h3 style={{margin: "0 0 4px", fontSize: 18, fontWeight: 600}}>Review withdrawal</h3>
+      <p style={{margin: "0 0 18px", color: "var(--muted)", fontSize: 13.5}}>Confirm the details. You can cancel before signing.</p>
       <div className="kv-list" style={{marginBottom: 16}}>
-        <div className="kv-row"><div className="k">Source</div>
+        <div className="kv-row">
+          <div className="k">Source</div>
           <div className="v">
             {type === "all" ? `${balances.length} tokens · ${fmtUSD(totalUSD)}` :
              `${fmtAmt(numAmount, token === "SOL" ? 3 : 2)} ${token} · ${fmtUSD(sourceUSD)}`}
-          </div><div></div></div>
+          </div>
+          <div></div>
+        </div>
         {type === "fiat" ? (
           <>
-            <div className="kv-row"><div className="k">Conversion</div>
-              <div className="v">
-                <div className="fx-row" style={{padding: 0, background: "transparent"}}>
-                  <span className="pair">1 USD ≈ {fmtAmt(card.currency === "USD" ? 1 : card.currency === "KZT" ? 458.4 : 25320, card.currency === "USD" ? 2 : 0)} {card.currency}</span>
-                </div>
-              </div><div></div></div>
-            <div className="kv-row"><div className="k">Destination<small>Bank card</small></div>
-              <div className="v mono">{card.number} · {card.holder}</div><div></div></div>
-            <div className="kv-row"><div className="k">FX fee<small>0.95% spread</small></div>
-              <div className="v mono">−{fmtUSD(fxFee)}</div><div></div></div>
-            <div className="kv-row"><div className="k">Service fee<small>1.25% payout</small></div>
-              <div className="v mono">−{fmtUSD(serviceFee)}</div><div></div></div>
-            <div className="kv-row"><div className="k">Estimated arrival</div>
-              <div className="v">1–2 business days</div><div></div></div>
+            <div className="kv-row"><div className="k">Destination<small>Bank card</small></div><div className="v mono">{card.number} · {card.holder}</div><div></div></div>
+            <div className="kv-row"><div className="k">FX fee<small>0.95% spread</small></div><div className="v mono">−{fmtUSD(fxFee)}</div><div></div></div>
+            <div className="kv-row"><div className="k">Service fee<small>1.25% payout</small></div><div className="v mono">−{fmtUSD(serviceFee)}</div><div></div></div>
+            <div className="kv-row"><div className="k">Estimated arrival</div><div className="v">1–2 business days</div><div></div></div>
           </>
         ) : (
           <>
-            <div className="kv-row"><div className="k">Destination<small>Solana address</small></div>
-              <div className="v mono">{destAddr ? shortAddr(destAddr) : "—"}</div><div></div></div>
-            <div className="kv-row"><div className="k">Network fee</div>
-              <div className="v mono">−{fmtUSD(networkFee)}</div><div></div></div>
-            <div className="kv-row"><div className="k">Estimated arrival</div>
-              <div className="v">~2 seconds</div><div></div></div>
+            <div className="kv-row"><div className="k">Destination<small>Solana address</small></div><div className="v mono">{destAddr ? shortAddr(destAddr) : "—"}</div><div></div></div>
+            <div className="kv-row"><div className="k">Network fee</div><div className="v mono">−{fmtUSD(networkFee)}</div><div></div></div>
+            <div className="kv-row"><div className="k">Estimated arrival</div><div className="v">~2 seconds</div><div></div></div>
           </>
         )}
       </div>
-
       <div className="security-block">
-        <div className="ico" style={{background: "var(--accent-soft)", color: "var(--accent)"}}><I.warn width="18" height="18"/></div>
+        <div className="ico" style={{background:"var(--accent-soft)",color:"var(--accent)"}}><I.warn width="18" height="18"/></div>
         <div>
           <h4>Conversion rates change in real time</h4>
-          <p>The final amount may shift by up to 0.3% between confirmation and settlement. We'll lock the rate the moment you confirm.</p>
+          <p>The final amount may shift by up to 0.3% between confirmation and settlement.</p>
         </div>
       </div>
     </>
   );
 }
 
-// =============== Step 4: success ===============
 function StepDone({ type, sourceUSD, finalUSD, destAddr, card, txId, token, onDone }) {
   return (
     <>
       <div className="success-wave">
         <div className="check-orb"><I.check width="36" height="36"/></div>
-        <h2 style={{margin: "10px 0 4px", fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em"}}>Withdrawal initiated</h2>
-        <p style={{margin: 0, color: "var(--muted)", fontSize: 13.5}}>
+        <h2 style={{margin:"10px 0 4px",fontSize:22,fontWeight:600}}>Withdrawal initiated</h2>
+        <p style={{margin:0,color:"var(--muted)",fontSize:13.5}}>
           {type === "fiat"
             ? "We're converting your crypto and routing the funds to your bank card."
             : "Your transaction is being broadcast on Solana."}
         </p>
-        <div style={{marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8}}>
+        <div style={{marginTop:14,display:"inline-flex",alignItems:"center",gap:8}}>
           <StatusPill status="pending"/>
-          <span style={{fontSize: 13, color: "var(--muted)"}}>Status: Processing</span>
+          <span style={{fontSize:13,color:"var(--muted)"}}>Status: Processing</span>
         </div>
       </div>
-
-      <div className="kv-list" style={{padding: "0 4px"}}>
-        <div className="kv-row"><div className="k">Amount<small>Source</small></div>
-          <div className="v mono">{fmtUSD(sourceUSD)}</div><div></div></div>
-        <div className="kv-row"><div className="k">You will receive</div>
-          <div className="v mono" style={{fontSize: 15, fontWeight: 600, color: "var(--ink)"}}>{fmtUSD(finalUSD)}</div><div></div></div>
-        <div className="kv-row"><div className="k">Destination</div>
-          <div className="v mono">{type === "fiat" ? card.number : (destAddr ? shortAddr(destAddr) : "—")}</div><div></div></div>
-        <div className="kv-row"><div className="k">{type === "fiat" ? "Payout ID" : "Transaction ID"}</div>
-          <div className="v mono">{txId}</div><div></div></div>
-        <div className="kv-row"><div className="k">Estimated arrival</div>
-          <div className="v">{type === "fiat" ? "1–2 business days" : "~2 seconds"}</div><div></div></div>
+      <div className="kv-list" style={{padding:"0 4px"}}>
+        <div className="kv-row"><div className="k">Amount<small>Source</small></div><div className="v mono">{fmtUSD(sourceUSD)}</div><div></div></div>
+        <div className="kv-row"><div className="k">You will receive</div><div className="v mono" style={{fontSize:15,fontWeight:600,color:"var(--ink)"}}>{fmtUSD(Math.max(finalUSD,0))}</div><div></div></div>
+        <div className="kv-row"><div className="k">Destination</div><div className="v mono">{type === "fiat" ? card.number : (destAddr ? shortAddr(destAddr) : "—")}</div><div></div></div>
+        <div className="kv-row"><div className="k">{type === "fiat" ? "Payout ID" : "Transaction ID"}</div><div className="v mono">{txId}</div><div></div></div>
+        <div className="kv-row"><div className="k">Estimated arrival</div><div className="v">{type === "fiat" ? "1–2 business days" : "~2 seconds"}</div><div></div></div>
       </div>
-
-      <div style={{display: "flex", gap: 8, marginTop: 22, justifyContent: "center"}}>
+      <div style={{display:"flex",gap:8,marginTop:22,justifyContent:"center"}}>
         <button className="btn">View withdrawal details <I.external width="13" height="13"/></button>
         <button className="btn btn-primary" onClick={onDone}>Back to dashboard <I.arrowRight width="13" height="13"/></button>
       </div>
@@ -442,14 +451,13 @@ function StepDone({ type, sourceUSD, finalUSD, destAddr, card, txId, token, onDo
   );
 }
 
-// =============== Sidebar summary ===============
-function SidebarSummary({ step, type, token, balances, numAmount, totalUSD, sourceUSD, card, fiatAmount, fxFee, networkFee, serviceFee, finalUSD, destAddr }) {
+function SidebarSummary({ step, type, token, balances, numAmount, totalUSD, sourceUSD, card, fxFee, networkFee, serviceFee, finalUSD, destAddr }) {
   if (step === 0) {
     return (
       <>
-        <div className="summary-line"><span className="muted">Type</span><span className="v">{type === "all" ? "Withdraw all" : type === "token" ? "Specific token" : "Convert to fiat"}</span></div>
+        <div className="summary-line"><span className="muted">Type</span><span className="v">{type === "all" ? "Withdraw all" : type === "crypto" ? "Specific token" : "Convert to fiat"}</span></div>
         <div className="summary-line"><span className="muted">Available</span><span className="v">{fmtUSD(totalUSD)}</span></div>
-        <div style={{fontSize: 12, color: "var(--muted)", marginTop: 14, lineHeight: 1.5}}>
+        <div style={{fontSize:12,color:"var(--muted)",marginTop:14,lineHeight:1.5}}>
           Pick how you want to move your funds. You'll choose the destination and review fees before anything is sent.
         </div>
       </>
@@ -461,10 +469,7 @@ function SidebarSummary({ step, type, token, balances, numAmount, totalUSD, sour
         <span className="muted">Source</span>
         <span className="v">{type === "all" ? `${balances.length} tokens` : `${fmtAmt(numAmount || 0, token === "SOL" ? 3 : 2)} ${token}`}</span>
       </div>
-      <div className="summary-line">
-        <span className="muted">≈ USD value</span>
-        <span className="v">{fmtUSD(sourceUSD)}</span>
-      </div>
+      <div className="summary-line"><span className="muted">≈ USD value</span><span className="v">{fmtUSD(sourceUSD)}</span></div>
       {type === "fiat" ? (
         <>
           <div className="summary-line"><span className="muted">FX fee</span><span className="v">−{fmtUSD(fxFee)}</span></div>
@@ -481,8 +486,8 @@ function SidebarSummary({ step, type, token, balances, numAmount, totalUSD, sour
         <div className="lbl">You receive</div>
         <div className="v">{fmtUSD(Math.max(finalUSD, 0))}</div>
         {type === "fiat" && (
-          <div className="muted" style={{fontSize: 12, marginTop: 4, fontFamily: "Geist Mono", fontVariantNumeric: "tabular-nums"}}>
-            ≈ {fmtAmt(Math.max(finalUSD, 0) * (card.currency === "USD" ? 1 : card.currency === "KZT" ? 458.4 : 25320), card.currency === "USD" ? 2 : 0)} {card.currency}
+          <div className="muted" style={{fontSize:12,marginTop:4,fontFamily:"Geist Mono",fontVariantNumeric:"tabular-nums"}}>
+            ≈ {fmtAmt(Math.max(finalUSD,0) * (card.currency === "USD" ? 1 : card.currency === "KZT" ? 458.4 : 25320), card.currency === "USD" ? 2 : 0)} {card.currency}
           </div>
         )}
       </div>

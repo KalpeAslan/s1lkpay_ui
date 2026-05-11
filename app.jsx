@@ -1,133 +1,169 @@
-/* global React, ReactDOM, useTweaks, TweaksPanel, TweakRadio, TweakSection, TweakSelect,
-   seedLinks, Sidebar, Topbar, Dashboard, PaymentLinksList, PaymentsPage, SettingsPage,
-   CreateLinkModal, LinkDetail, PublicPay, WalletPage, WithdrawPage, useToasts, I */
-const { useState, useEffect, useMemo } = React;
+/* global React, ReactDOM, useTweaks, TweaksPanel, TweakRadio, TweakSection,
+   Sidebar, Topbar, Dashboard, PaymentLinksList, PaymentsPage, SettingsPage,
+   CreateLinkModal, LinkDetail, PublicPay, WalletPage, WithdrawPage, useToasts, I,
+   AuthContext, AppContext, useAppCtx, AuthPage,
+   api, queryClient, setToken, clearToken, getToken */
+import { QueryClientProvider } from "@tanstack/react-query";
+import {
+  BrowserRouter, Routes, Route, Navigate, Outlet,
+  useNavigate, useLocation, useParams,
+} from "react-router-dom";
 
-const DEFAULTS = /*EDITMODE-BEGIN*/{
-  "sidebar": "expanded"
-}/*EDITMODE-END*/;
+const { useState } = React;
 
-function App() {
+const DEFAULTS = /*EDITMODE-BEGIN*/{ "sidebar": "expanded" }/*EDITMODE-END*/;
+
+// ── Auth guard ────────────────────────────────────────────────────────────────
+function RequireAuth() {
+  const { token } = React.useContext(AuthContext);
+  const location = useLocation();
+  if (!token) return <Navigate to="/login" state={{ from: location }} replace/>;
+  return <Outlet/>;
+}
+
+// ── App layout shell ──────────────────────────────────────────────────────────
+function AppShell() {
   const [tweaks, setTweak] = useTweaks(DEFAULTS);
-  const [route, setRoute] = useState("home");
-  const [links, setLinks] = useState(() => seedLinks());
-  const [openLink, setOpenLink] = useState(null); // link object for detail
   const [showCreate, setShowCreate] = useState(false);
-  const [publicLink, setPublicLink] = useState(null); // when set, render public pay page
   const [toastNode, toast] = useToasts();
-
-  // Listen for "Open" from detail page
-  useEffect(() => {
-    const h = (e) => setPublicLink(e.detail.link);
-    window.addEventListener("s1lk:open-public", h);
-    return () => window.removeEventListener("s1lk:open-public", h);
-  }, []);
+  const navigate = useNavigate();
 
   const onCreate = () => setShowCreate(true);
   const onLinkCreated = (link) => {
-    setLinks(prev => [link, ...prev]);
     setShowCreate(false);
-    setOpenLink(link);
-    setRoute("links");
+    navigate("/links/" + link.id);
     toast("Payment link created");
+    queryClient.invalidateQueries({ queryKey: ["payment-links"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
   };
-
-  const simulatePayment = (id) => {
-    setLinks(prev => prev.map(l => l.id === id ? {
-      ...l,
-      status: "paid",
-      paid: Date.now(),
-      txHash: "5z9f8gQpW2eR3hQax9Lp" + Math.random().toString(36).slice(2, 8),
-    } : l));
-    setOpenLink(prev => prev && prev.id === id ? {
-      ...prev, status: "paid", paid: Date.now(),
-      txHash: "5z9f8gQpW2eR3hQax9Lp" + Math.random().toString(36).slice(2, 8),
-    } : prev);
-    toast("Payment received");
-  };
-
-  const onViewClient = () => {
-    // pick the most recent pending link, else the most recent link
-    const pending = links.find(l => l.status === "pending");
-    setPublicLink(pending || links[0]);
-  };
-
-  if (publicLink) {
-    return (
-      <>
-        <PublicPay
-          link={publicLink}
-          onExit={() => setPublicLink(null)}
-          onPaid={(id) => simulatePayment(id)}
-        />
-        {toastNode}
-        <TweaksPanelContent tweaks={tweaks} setTweak={setTweak}/>
-      </>
-    );
-  }
-
-  const crumbs = (() => {
-    if (openLink) return ["Payment links", openLink.description];
-    if (route === "home") return ["Home"];
-    if (route === "links") return ["Payment links"];
-    if (route === "payments") return ["Payments"];
-    if (route === "settings") return ["Settings"];
-    if (route === "wallet") return ["Wallet"];
-    if (route === "withdraw") return ["Wallet", "Withdraw"];
-    if (route === "create") return ["Create link"];
-    return ["Home"];
-  })();
-
-  let body;
-  if (openLink) {
-    body = <LinkDetail link={openLink} onBack={() => setOpenLink(null)} onSimulate={() => simulatePayment(openLink.id)}/>;
-  } else if (route === "home") {
-    body = <Dashboard links={links} onCreate={onCreate} onOpenLink={(l) => l === "__all__" ? setRoute("links") : setOpenLink(l)}/>;
-  } else if (route === "links") {
-    body = <PaymentLinksList links={links} onCreate={onCreate} onOpenLink={setOpenLink}/>;
-  } else if (route === "payments") {
-    body = <PaymentsPage links={links}/>;
-  } else if (route === "settings") {
-    body = <SettingsPage/>;
-  } else if (route === "wallet") {
-    body = <WalletPage onWithdraw={() => setRoute("withdraw")}/>;
-  } else if (route === "withdraw") {
-    body = <WithdrawPage onDone={() => { setRoute("home"); toast("Withdrawal initiated"); }}/>;
-  } else if (route === "create") {
-    // Open the modal & default to home behind it
-    if (!showCreate) setShowCreate(true);
-    body = <Dashboard links={links} onCreate={onCreate} onOpenLink={setOpenLink}/>;
-  }
 
   return (
-    <div className={"app" + (tweaks.sidebar === "rail" ? " sidebar-rail" : "")}>
-      <Sidebar route={route} setRoute={(r) => { setOpenLink(null); if (r === "create") { onCreate(); } else { setRoute(r); } }} links={links}/>
-      <div className="main">
-        <Topbar
-          crumbs={crumbs}
-          onCreate={onCreate}
-          onViewClient={onViewClient}
-          sidebarStyle={tweaks.sidebar}
-          setSidebarStyle={(v) => setTweak("sidebar", v)}
-        />
-        <div className="content">{body}</div>
+    <AppContext.Provider value={{ toast, onCreate }}>
+      <div className={"app" + (tweaks.sidebar === "rail" ? " sidebar-rail" : "")}>
+        <Sidebar/>
+        <div className="main">
+          <Topbar
+            sidebarStyle={tweaks.sidebar}
+            setSidebarStyle={(v) => setTweak("sidebar", v)}
+          />
+          <div className="content"><Outlet/></div>
+        </div>
+
+        {showCreate && (
+          <CreateLinkModal
+            onClose={() => setShowCreate(false)}
+            onCreate={onLinkCreated}
+            toast={toast}
+          />
+        )}
+        {toastNode}
+        <TweaksPanelContent tweaks={tweaks} setTweak={setTweak}/>
       </div>
+    </AppContext.Provider>
+  );
+}
 
-      {showCreate && (
-        <CreateLinkModal onClose={() => setShowCreate(false)} onCreate={onLinkCreated}/>
-      )}
+// ── Route wrappers ─────────────────────────────────────────────────────────────
+function DashboardRoute() {
+  const { onCreate } = useAppCtx();
+  const navigate = useNavigate();
+  return (
+    <Dashboard
+      onCreate={onCreate}
+      onOpenLink={(id) => navigate("/links/" + id)}
+      onViewAll={() => navigate("/links")}
+    />
+  );
+}
 
-      {/* Quick demo FAB — only if there is a pending link */}
-      {!openLink && route === "home" && links.some(l => l.status === "pending") && (
-        <button className="demo-fab" onClick={onViewClient}>
-          <span className="demo-dot"></span>
-          Play demo: open client view
-        </button>
-      )}
+function LinksRoute() {
+  const { onCreate } = useAppCtx();
+  const navigate = useNavigate();
+  return (
+    <PaymentLinksList
+      onCreate={onCreate}
+      onOpenLink={(id) => navigate("/links/" + id)}
+    />
+  );
+}
 
-      {toastNode}
-      <TweaksPanelContent tweaks={tweaks} setTweak={setTweak}/>
-    </div>
+function LinkDetailRoute() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useAppCtx();
+  const onSimulated = (linkId) => {
+    toast("Payment received");
+    queryClient.invalidateQueries({ queryKey: ["payment-link", linkId] });
+    queryClient.invalidateQueries({ queryKey: ["payment-links"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["wallet"] });
+    queryClient.invalidateQueries({ queryKey: ["payments"] });
+  };
+  return (
+    <LinkDetail
+      linkId={id}
+      onBack={() => navigate("/links")}
+      onSimulated={onSimulated}
+      toast={toast}
+    />
+  );
+}
+
+function SettingsRoute() {
+  const { toast } = useAppCtx();
+  return <SettingsPage toast={toast}/>;
+}
+
+function PublicPayRoute() {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const { token } = React.useContext(AuthContext);
+  const onSimulated = (linkId) => {
+    queryClient.invalidateQueries({ queryKey: ["payment-link", linkId] });
+    queryClient.invalidateQueries({ queryKey: ["payment-links"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["wallet"] });
+    queryClient.invalidateQueries({ queryKey: ["payments"] });
+  };
+  return (
+    <PublicPay
+      slug={slug}
+      onExit={() => navigate(token ? "/dashboard" : "/")}
+      onPaid={(linkId) => onSimulated(linkId)}
+    />
+  );
+}
+
+// ── Root ──────────────────────────────────────────────────────────────────────
+function App() {
+  const [token, setTokenState] = useState(() => getToken());
+
+  const setAuth = (t) => { setToken(t); setTokenState(t); };
+  const logout  = () => { clearToken(); setTokenState(null); queryClient.clear(); };
+
+  return (
+    <AuthContext.Provider value={{ token, setAuth, logout }}>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<AuthPage/>}/>
+            <Route path="/pay/:slug" element={<PublicPayRoute/>}/>
+            <Route element={<RequireAuth/>}>
+              <Route element={<AppShell/>}>
+                <Route index element={<Navigate to="/dashboard" replace/>}/>
+                <Route path="/dashboard" element={<DashboardRoute/>}/>
+                <Route path="/links" element={<LinksRoute/>}/>
+                <Route path="/links/:id" element={<LinkDetailRoute/>}/>
+                <Route path="/payments" element={<PaymentsPage/>}/>
+                <Route path="/wallet" element={<WalletPage/>}/>
+                <Route path="/withdraw" element={<WithdrawPage/>}/>
+                <Route path="/settings" element={<SettingsRoute/>}/>
+              </Route>
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </AuthContext.Provider>
   );
 }
 
