@@ -10,15 +10,6 @@
 
 ---
 
-## Submission to 2026 Solana National Hackathon
-
-| Name | Role | Contact |
-|------|------|---------|
-| Artur | Lead Engineer | |
-| Nurdaulet | Backend Developer | [Email](mailto:nurdaulet.nurahmet@gmail.com) |
-
----
-
 ## Problem and Solution
 
 ### 1. Crypto Payments Are Too Complex
