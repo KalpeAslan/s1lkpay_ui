@@ -1,3 +1,3 @@
 export function setToken(t) {
-  localStorage.setItem("s1lk_token", t);
+  sessionStorage.setItem("s1lk_token", t);
 }

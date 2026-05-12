@@ -71,7 +71,15 @@ export function usePhantomPay({ slug, onPaid }) {
           const senderAta = await getAssociatedTokenAddress(mintPubkey, senderPubkey);
           const recipientAta = await getAssociatedTokenAddress(mintPubkey, recipientPubkey);
 
-          const recipientAtaInfo = await connection.getAccountInfo(recipientAta);
+          const [senderAtaInfo, recipientAtaInfo] = await Promise.all([
+            connection.getAccountInfo(senderAta),
+            connection.getAccountInfo(recipientAta),
+          ]);
+
+          if (!senderAtaInfo) {
+            throw new Error(`You don't have any ${link.token} in your wallet. Please add ${link.token} before paying.`);
+          }
+
           if (!recipientAtaInfo) {
             transaction.add(
               createAssociatedTokenAccountInstruction(

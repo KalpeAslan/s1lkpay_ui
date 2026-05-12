@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, useLocation, Link } from "react-router-dom";
 import { api } from "../api/client.js";
 import { AuthContext } from "../context/AuthContext.jsx";
 import { IconArrowRight } from "./icons/IconArrowRight.jsx";
@@ -11,8 +11,8 @@ import { IconShield } from "./icons/IconShield.jsx";
 export function AuthPage() {
   const { token, setAuth } = useContext(AuthContext);
   const navigate = useNavigate();
-
-  const [mode, setMode] = useState("login");
+  const location = useLocation();
+  const mode = location.pathname === "/signup" ? "register" : "login";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -160,6 +160,18 @@ export function AuthPage() {
               )}
             </button>
           </form>
+
+          <p className="auth-switch">
+            {mode === "login" ? (
+              <>
+                New to S1lk PAY? <Link to="/signup">Create an account</Link>
+              </>
+            ) : (
+              <>
+                Already have an account? <Link to="/login">Sign in</Link>
+              </>
+            )}
+          </p>
 
           <div className="auth-foot">
             <span>

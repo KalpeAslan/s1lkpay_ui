@@ -1,3 +1,3 @@
 export function clearToken() {
-  localStorage.removeItem("s1lk_token");
+  sessionStorage.removeItem("s1lk_token");
 }

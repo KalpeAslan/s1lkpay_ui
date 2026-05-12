@@ -23,7 +23,7 @@ export function TweaksPanel({ title = "Tweaks", noDeckControls = false, children
   }, [hasDeckStage, railEnabled]);
   const [railVisible, setRailVisible] = useState(() => {
     try {
-      return localStorage.getItem("deck-stage.railVisible") !== "0";
+      return sessionStorage.getItem("deck-stage.railVisible") !== "0";
     } catch {
       return true;
     }

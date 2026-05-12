@@ -191,7 +191,7 @@ export function PublicPay({ slug, onExit, onPaid }) {
               </div>
               {txSignature && (
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <a className="btn btn-sm" href={`https://solscan.io/tx/${txSignature}`} target="_blank" rel="noreferrer">
+                  <a className="btn btn-sm" href={`https://solscan.io/tx/${txSignature}?cluster=devnet`} target="_blank" rel="noreferrer">
                     <IconExternal width="14" height="14" /> View on Solscan
                   </a>
                 </div>

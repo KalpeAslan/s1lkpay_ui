@@ -15,6 +15,7 @@ import { RequireAuth } from "./components/RequireAuth.jsx";
 import { SettingsRoute } from "./components/SettingsRoute.jsx";
 import { WalletPage } from "./components/WalletPage.jsx";
 import { WithdrawPage } from "./components/WithdrawPage.jsx";
+import { LandingHtmlRedirect } from "./components/LandingHtmlRedirect.jsx";
 
 function App() {
   const [token, setTokenState] = useState(() => getToken());
@@ -34,7 +35,9 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
+            <Route index element={<LandingHtmlRedirect />} />
             <Route path="/login" element={<AuthPage />} />
+            <Route path="/signup" element={<AuthPage />} />
             <Route path="/pay/:slug" element={<PublicPayRoute />} />
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>

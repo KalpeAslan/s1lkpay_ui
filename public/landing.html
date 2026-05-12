@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S1lk PAY — Borderless Crypto Payment Infrastructure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #F7F4EF;
+    --ink: #0F0E0C;
+    --ink2: #2C2A25;
+    --muted: #7A7468;
+    --border: rgba(15,14,12,0.1);
+    --red: #D44B2A;
+    --red-light: #FAF0EC;
+    --green: #1A7A52;
+    --green-light: #E8F5EF;
+    --card-bg: #FFFFFF;
+    --surface: #F0EDE8;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 3rem;
+    background: rgba(247,244,239,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 0.5px solid var(--border);
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800;
+    letter-spacing: -0.02em;
+    text-decoration: none; color: var(--ink);
+  }
+  .logo-mark {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--ink); color: var(--cream);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+  }
+  .logo span { color: var(--red); }
+  .nav-links { display: flex; align-items: center; gap: 2rem; }
+  .nav-links a { text-decoration: none; color: var(--muted); font-size: 14px; font-weight: 400; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta {
+    background: var(--ink); color: var(--cream);
+    padding: 0.55rem 1.4rem; border-radius: 100px;
+    font-size: 14px; font-weight: 500;
+    text-decoration: none; transition: background 0.2s;
+  }
+  .nav-cta:hover { background: var(--red); }
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-shrink: 0;
+  }
+  .nav-auth-link {
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--muted);
+    white-space: nowrap;
+    transition: color 0.2s;
+  }
+  .nav-auth-link:hover { color: var(--ink); }
+
+  /* HERO */
+  .hero {
+    padding: 10rem 3rem 5rem;
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border-radius: 100px;
+    padding: 0.35rem 1rem; font-size: 12px; font-weight: 500;
+    color: var(--muted); margin-bottom: 1.5rem;
+    border: 0.5px solid var(--border);
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .hero h1 {
+    font-family: 'Syne', sans-serif; font-size: 4.2rem;
+    font-weight: 800; line-height: 1.05; letter-spacing: -0.03em;
+    margin-bottom: 1.5rem;
+  }
+  .hero h1 em { font-style: normal; color: var(--red); }
+  .hero p { font-size: 1.05rem; color: var(--muted); line-height: 1.7; margin-bottom: 2.5rem; max-width: 440px; }
+  .hero-actions { display: flex; align-items: center; gap: 1rem; }
+  .btn-primary {
+    background: var(--red); color: white;
+    padding: 0.8rem 2rem; border-radius: 100px;
+    font-size: 15px; font-weight: 500;
+    text-decoration: none; transition: all 0.2s;
+    border: none; cursor: pointer;
+  }
+  .btn-primary:hover { background: #B83E22; transform: translateY(-1px); }
+  .btn-ghost {
+    color: var(--ink); font-size: 15px; font-weight: 400;
+    text-decoration: none; display: flex; align-items: center; gap: 6px;
+    padding: 0.8rem 1rem;
+  }
+  .btn-ghost:hover { color: var(--red); }
+  .btn-ghost svg { transition: transform 0.2s; }
+  .btn-ghost:hover svg { transform: translateX(3px); }
+
+  /* HERO VISUAL */
+  .hero-visual { position: relative; }
+  .dashboard-card {
+    background: var(--card-bg);
+    border: 0.5px solid var(--border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.08);
+  }
+  .dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .dash-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
+  .dash-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .new-link-btn {
+    background: var(--red); color: white;
+    padding: 0.35rem 0.9rem; border-radius: 100px;
+    font-size: 12px; font-weight: 500; border: none;
+  }
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+  .metric {
+    background: var(--surface);
+    border-radius: 12px; padding: 0.875rem 1rem;
+  }
+  .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .metric-value { font-family: 'DM Mono', monospace; font-size: 1.5rem; font-weight: 500; letter-spacing: -0.02em; }
+  .metric-tag { font-size: 11px; margin-top: 4px; font-weight: 500; }
+  .tag-up { color: var(--green); }
+  .tag-info { color: var(--muted); }
+  .mini-chart {
+    height: 32px; margin-top: 8px;
+    display: flex; align-items: flex-end; gap: 2px;
+  }
+  .mini-bar {
+    flex: 1; border-radius: 2px 2px 0 0;
+    background: var(--red); opacity: 0.15;
+    transition: height 0.3s;
+  }
+  .mini-bar.active { opacity: 0.9; }
+
+  /* Token row */
+  .token-row { display: flex; align-items: center; gap: 10px; padding: 0.6rem 0; border-bottom: 0.5px solid var(--border); }
+  .token-row:last-child { border-bottom: none; }
+  .token-icon {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--surface); display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+  }
+  .token-name { flex: 1; font-size: 13px; }
+  .token-name small { display: block; font-size: 11px; color: var(--muted); }
+  .token-amount { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; }
+  .token-pct { font-size: 11px; color: var(--muted); text-align: right; }
+
+  /* Floating pill */
+  .pill-float {
+    position: absolute; top: -1rem; right: -1.5rem;
+    background: var(--green); color: white;
+    border-radius: 100px; padding: 0.5rem 1rem;
+    font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 16px rgba(26,122,82,0.3);
+    animation: floatPill 3s ease-in-out infinite;
+  }
+  .pill-float2 {
+    position: absolute; bottom: -1rem; left: -1.5rem;
+    background: var(--card-bg); border: 0.5px solid var(--border);
+    border-radius: 100px; padding: 0.5rem 1rem;
+    font-size: 12px; font-weight: 400; color: var(--ink);
+    display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    animation: floatPill 3s ease-in-out 1.5s infinite;
+  }
+  @keyframes floatPill {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .settle-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+  /* STATS STRIP */
+  .stats-strip {
+    border-top: 0.5px solid var(--border);
+    border-bottom: 0.5px solid var(--border);
+    background: var(--surface);
+    padding: 2rem 3rem;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    max-width: 100%;
+  }
+  .stat-item { text-align: center; padding: 0 1rem; border-right: 0.5px solid var(--border); }
+  .stat-item:last-child { border-right: none; }
+  .stat-num {
+    font-family: 'Syne', sans-serif; font-size: 2.5rem;
+    font-weight: 800; letter-spacing: -0.03em; color: var(--ink);
+    line-height: 1;
+  }
+  .stat-num span { color: var(--red); }
+  .stat-desc { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* HOW IT WORKS */
+  section { max-width: 1200px; margin: 0 auto; padding: 6rem 3rem; }
+  .section-eyebrow {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); font-weight: 500; margin-bottom: 1rem;
+  }
+  .section-title {
+    font-family: 'Syne', sans-serif; font-size: 2.8rem;
+    font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
+    margin-bottom: 1rem;
+  }
+  .section-sub { font-size: 1.05rem; color: var(--muted); max-width: 480px; line-height: 1.7; }
+
+  .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 4rem; }
+  .step-card {
+    background: var(--card-bg); border: 0.5px solid var(--border);
+    border-radius: 20px; padding: 2rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .step-card:hover { border-color: rgba(15,14,12,0.25); transform: translateY(-3px); }
+  .step-num {
+    font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+    color: var(--muted); margin-bottom: 1.5rem;
+  }
+  .step-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: var(--red-light); display: flex; align-items: center;
+    justify-content: center; margin-bottom: 1.25rem;
+  }
+  .step-icon svg { width: 22px; height: 22px; stroke: var(--red); }
+  .step-card h3 { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.75rem; }
+  .step-card p { font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+  /* FEATURES */
+  .features-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
+  .feature-list { margin-top: 2.5rem; }
+  .feature-item { display: flex; gap: 1rem; margin-bottom: 1.75rem; }
+  .feature-dot {
+    width: 36px; height: 36px; min-width: 36px; border-radius: 10px;
+    background: var(--red-light); display: flex; align-items: center;
+    justify-content: center; margin-top: 2px;
+  }
+  .feature-dot svg { width: 16px; height: 16px; stroke: var(--red); }
+  .feature-item h4 { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .feature-item p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+  /* Payment links mockup */
+  .links-mockup {
+    background: var(--card-bg); border: 0.5px solid var(--border);
+    border-radius: 20px; overflow: hidden;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.07);
+  }
+  .mockup-header {
+    background: var(--surface); padding: 1rem 1.5rem;
+    border-bottom: 0.5px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .mockup-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; }
+  .mockup-filters { display: flex; gap: 6px; }
+  .filter-pill {
+    padding: 0.25rem 0.75rem; border-radius: 100px;
+    font-size: 11px; font-weight: 500; cursor: pointer;
+    border: 0.5px solid var(--border); background: transparent; color: var(--muted);
+  }
+  .filter-pill.active { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+  .link-row {
+    display: grid; grid-template-columns: auto 1fr auto auto;
+    gap: 1rem; align-items: center;
+    padding: 0.875rem 1.5rem; border-bottom: 0.5px solid var(--border);
+  }
+  .link-row:last-child { border-bottom: none; }
+  .status-badge {
+    padding: 0.2rem 0.6rem; border-radius: 100px;
+    font-size: 11px; font-weight: 500; white-space: nowrap;
+  }
+  .status-paid { background: var(--green-light); color: var(--green); }
+  .status-pending { background: #FEF3C7; color: #92400E; }
+  .status-expired { background: #FEE2E2; color: #991B1B; }
+  .link-desc { font-size: 13px; font-weight: 500; }
+  .link-customer { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+  .link-amount { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; text-align: right; }
+  .link-token { font-size: 11px; color: var(--muted); }
+  .open-btn {
+    padding: 0.3rem 0.75rem; border-radius: 8px;
+    font-size: 12px; border: 0.5px solid var(--border);
+    background: transparent; cursor: pointer; color: var(--ink);
+  }
+
+  /* TOKENS */
+  .tokens-section { background: var(--ink); padding: 5rem 0; }
+  .tokens-inner { max-width: 1200px; margin: 0 auto; padding: 0 3rem; }
+  .tokens-inner .section-eyebrow { color: rgba(247,244,239,0.4); }
+  .tokens-inner .section-title { color: var(--cream); }
+  .tokens-inner .section-sub { color: rgba(247,244,239,0.55); }
+  .tokens-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 4rem; background: rgba(247,244,239,0.08); border-radius: 20px; overflow: hidden; }
+  .token-card { background: var(--ink2); padding: 2.5rem 2rem; }
+  .token-card:hover { background: #3A3830; }
+  .tc-icon { font-size: 2rem; margin-bottom: 1.25rem; }
+  .tc-name { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 800; color: var(--cream); letter-spacing: -0.02em; margin-bottom: 0.4rem; }
+  .tc-full { font-size: 13px; color: rgba(247,244,239,0.45); margin-bottom: 1rem; }
+  .tc-share {
+    display: inline-block; padding: 0.25rem 0.75rem;
+    border-radius: 100px; border: 0.5px solid rgba(247,244,239,0.15);
+    font-size: 12px; color: rgba(247,244,239,0.6);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* SOCIAL PROOF */
+  .proof-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 4rem; }
+  .proof-card {
+    background: var(--card-bg); border: 0.5px solid var(--border);
+    border-radius: 20px; padding: 2rem;
+  }
+  .proof-stars { color: var(--red); font-size: 14px; margin-bottom: 1rem; }
+  .proof-text { font-size: 14px; color: var(--ink); line-height: 1.7; margin-bottom: 1.5rem; font-style: italic; }
+  .proof-author { display: flex; align-items: center; gap: 10px; }
+  .proof-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--surface); display: flex; align-items: center;
+    justify-content: center; font-size: 13px; font-weight: 600;
+    color: var(--ink);
+  }
+  .proof-name { font-size: 13px; font-weight: 600; }
+  .proof-role { font-size: 11px; color: var(--muted); }
+
+  /* CTA */
+  .cta-section {
+    background: var(--red); padding: 6rem 3rem;
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .cta-section::before {
+    content: 'S1lk PAY'; position: absolute;
+    font-family: 'Syne', sans-serif; font-size: 18rem; font-weight: 800;
+    color: rgba(255,255,255,0.04); white-space: nowrap;
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    letter-spacing: -0.05em; pointer-events: none;
+  }
+  .cta-section h2 {
+    font-family: 'Syne', sans-serif; font-size: 3.5rem;
+    font-weight: 800; color: white; letter-spacing: -0.03em;
+    line-height: 1.1; margin-bottom: 1rem;
+  }
+  .cta-section p { color: rgba(255,255,255,0.7); font-size: 1.05rem; margin-bottom: 2.5rem; }
+  .btn-white {
+    background: white; color: var(--red);
+    padding: 0.9rem 2.5rem; border-radius: 100px;
+    font-size: 15px; font-weight: 600;
+    text-decoration: none; display: inline-block;
+    transition: all 0.2s;
+  }
+  .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+
+  /* FOOTER */
+  footer {
+    background: var(--ink); padding: 4rem 3rem 2rem;
+  }
+  .footer-inner { max-width: 1200px; margin: 0 auto; }
+  .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
+  .footer-brand p { font-size: 13px; color: rgba(247,244,239,0.45); margin-top: 0.75rem; line-height: 1.65; max-width: 260px; }
+  .footer-col h4 { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: rgba(247,244,239,0.8); margin-bottom: 1rem; }
+  .footer-col a { display: block; font-size: 13px; color: rgba(247,244,239,0.45); text-decoration: none; margin-bottom: 0.6rem; transition: color 0.2s; }
+  .footer-col a:hover { color: var(--cream); }
+  .footer-bottom {
+    border-top: 0.5px solid rgba(247,244,239,0.1); padding-top: 2rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-bottom p { font-size: 12px; color: rgba(247,244,239,0.3); }
+  .footer-logo .logo { color: var(--cream); }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero-copy { animation: fadeUp 0.7s ease both; }
+  .hero-visual { animation: fadeUp 0.7s 0.2s ease both; }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; padding-top: 7rem; }
+    .hero h1 { font-size: 2.8rem; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .features-layout { grid-template-columns: 1fr; }
+    .stats-strip { grid-template-columns: 1fr 1fr; }
+    .tokens-grid { grid-template-columns: 1fr; }
+    .proof-grid { grid-template-columns: 1fr; }
+    .footer-top { grid-template-columns: 1fr 1fr; }
+    nav { padding: 1rem 1.5rem; flex-wrap: wrap; row-gap: 0.75rem; }
+    .nav-right { width: 100%; justify-content: flex-end; gap: 1rem; }
+    section { padding: 4rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/landing.html" class="logo">
+    <div class="logo-mark">S</div>
+    S1lk <span>PAY</span>
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#tokens">Supported assets</a>
+    <a href="#pricing">For business</a>
+  </div>
+  <div class="nav-right">
+    <a href="/login" class="nav-auth-link">Log in</a>
+    <a href="/signup" class="nav-auth-link">Sign up</a>
+    <a href="/login" class="nav-cta js-app-start">Get started →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-copy">
+    <div class="hero-eyebrow">
+      <span class="badge-dot"></span>
+      B2B &amp; B2C · Global payment infrastructure
+    </div>
+    <h1>Accept crypto. <em>Settle in fiat.</em></h1>
+    <p>S1lk PAY lets merchants create payment links or QR codes in seconds. Customers pay in any supported crypto asset — we handle conversion automatically and settle funds into your preferred currency, whether fiat or stable.</p>
+    <div class="hero-actions">
+      <a href="/login" class="btn-primary js-app-start">Start for free</a>
+      <a href="#how" class="btn-ghost">
+        See how it works
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <div class="pill-float">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      $1,200 settled → USD in 2.1s
+    </div>
+    <div class="dashboard-card">
+      <div class="dash-header">
+        <div>
+          <div class="dash-title">Dashboard</div>
+          <div class="dash-sub">Sandbox Merchant · Solana Mainnet</div>
+        </div>
+        <button class="new-link-btn">+ New link</button>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">Total received</div>
+          <div class="metric-value">$1,785</div>
+          <div class="metric-tag tag-up">↑ +18.4% vs last 14d</div>
+          <div class="mini-chart">
+            <div class="mini-bar" style="height:40%"></div>
+            <div class="mini-bar" style="height:55%"></div>
+            <div class="mini-bar" style="height:35%"></div>
+            <div class="mini-bar" style="height:70%"></div>
+            <div class="mini-bar" style="height:45%"></div>
+            <div class="mini-bar active" style="height:100%"></div>
+            <div class="mini-bar" style="height:60%"></div>
+          </div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Successful payments</div>
+          <div class="metric-value">6/10</div>
+          <div class="metric-tag tag-up">↑ 86% success rate</div>
+          <div class="mini-chart">
+            <div class="mini-bar" style="height:60%"></div>
+            <div class="mini-bar" style="height:40%"></div>
+            <div class="mini-bar" style="height:80%"></div>
+            <div class="mini-bar" style="height:55%"></div>
+            <div class="mini-bar active" style="height:90%"></div>
+            <div class="mini-bar" style="height:70%"></div>
+            <div class="mini-bar" style="height:100%"></div>
+          </div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Avg settlement</div>
+          <div class="metric-value">~2.1s</div>
+          <div class="metric-tag tag-up">↓ 0.4s faster</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Pending</div>
+          <div class="metric-value">$875</div>
+          <div class="metric-tag tag-info">3 awaiting payment</div>
+        </div>
+      </div>
+      <div style="margin-top:1rem; border-top:0.5px solid var(--border); padding-top:1rem;">
+        <div style="font-size:11px; color:var(--muted); margin-bottom:0.75rem; text-transform:uppercase; letter-spacing:0.08em;">Income by token</div>
+        <div class="token-row">
+          <div class="token-icon">◎</div>
+          <div class="token-name">SOL <small>Solana</small></div>
+          <div>
+            <div class="token-amount">$1,200</div>
+            <div class="token-pct">67%</div>
+          </div>
+        </div>
+        <div class="token-row">
+          <div class="token-icon">₮</div>
+          <div class="token-name">USDT <small>Tether</small></div>
+          <div>
+            <div class="token-amount">$348</div>
+            <div class="token-pct">19%</div>
+          </div>
+        </div>
+        <div class="token-row">
+          <div class="token-icon">$</div>
+          <div class="token-name">USDC <small>USD Coin</small></div>
+          <div>
+            <div class="token-amount">$237</div>
+            <div class="token-pct">13%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pill-float2">
+      <span class="settle-dot"></span>
+      Northwind paid SOL → settled as USD
+    </div>
+  </div>
+</div>
+
+<!-- STATS STRIP -->
+<div class="stats-strip">
+  <div class="stat-item">
+    <div class="stat-num">~<span>2.1</span>s</div>
+    <div class="stat-desc">Average settlement time</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num"><span>5</span>+</div>
+    <div class="stat-desc">Supported crypto assets</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num"><span>∞</span></div>
+    <div class="stat-desc">Borderless, global reach</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num"><span>0</span></div>
+    <div class="stat-desc">Setup fees, forever</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-eyebrow">How it works</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:flex-end;">
+    <div>
+      <h2 class="section-title">From payment link<br>to fiat — in seconds</h2>
+    </div>
+    <div>
+      <p class="section-sub">No bank wires. No crypto complexity for your customers. Create a link, let them pay in any supported asset, and receive your preferred currency — automatically converted and settled.</p>
+    </div>
+  </div>
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-num">01 / 04</div>
+      <div class="step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+        </svg>
+      </div>
+      <h3>Create a payment link</h3>
+      <p>Set the amount, choose the currency you want to receive (fiat or crypto), add a description and deadline. Your link or QR code is ready instantly.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">02 / 04</div>
+      <div class="step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M7 7h2v2H7zM15 7h2v2h-2zM7 15h2v2H7zM11 11h2v2h-2zM15 15h2v2h-2z"/>
+        </svg>
+      </div>
+      <h3>Customer pays in crypto</h3>
+      <p>Your customer pays using any supported asset — USDC, USDT, SOL, KZTE/EVO, or PEPE. They scan the QR or click the link and pay from their wallet in one tap.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">03 / 04</div>
+      <div class="step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+        </svg>
+      </div>
+      <h3>Auto-conversion if needed</h3>
+      <p>If the customer pays with a different asset than your preferred settlement currency, our system handles the conversion automatically — no manual swaps, no rate risk.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">04 / 04</div>
+      <div class="step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <h3>Receive your preferred currency</h3>
+      <p>Funds land in your wallet as your chosen currency — stablecoin, SOL, or fiat. Withdraw anytime or let balances accumulate across payment links.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" style="background:var(--surface); max-width:100%; padding:6rem 0;">
+  <div style="max-width:1200px; margin:0 auto; padding:0 3rem;">
+    <div class="features-layout">
+      <div>
+        <div class="section-eyebrow">Features</div>
+        <h2 class="section-title">Payment infrastructure for the borderless economy</h2>
+        <div class="feature-list">
+          <div class="feature-item">
+            <div class="feature-dot">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+                <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
+            </div>
+            <div>
+              <h4>Auto-conversion & fiat settlement</h4>
+              <p>Customers pay in any crypto. We convert automatically and settle into your preferred currency — fiat, stablecoin, or native token — with no manual steps.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-dot">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <div>
+              <h4>Multi-asset support</h4>
+              <p>Accept USDC, USDT, SOL, KZTE/EVO, PEPE, and more. Merchants set what they receive; customers pay with whatever they hold.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-dot">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+                <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+            </div>
+            <div>
+              <h4>Global, borderless payments</h4>
+              <p>Remove bank wires, FX delays, and cross-border friction. Payments settle in seconds regardless of where your customer is in the world.</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-dot">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+              </svg>
+            </div>
+            <div>
+              <h4>Unified merchant dashboard</h4>
+              <p>Track income by asset, monitor pending vs settled payments, export CSVs for accounting, and manage all your payment links in one place.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="links-mockup">
+          <div class="mockup-header">
+            <div class="mockup-title">Payment links</div>
+            <div class="mockup-filters">
+              <button class="filter-pill active">All 10</button>
+              <button class="filter-pill">Pending 3</button>
+              <button class="filter-pill">Paid 6</button>
+            </div>
+          </div>
+          <div class="link-row">
+            <span class="status-badge status-paid">Paid</span>
+            <div>
+              <div class="link-desc">Annual subscription</div>
+              <div class="link-customer">Acme Co. · pl_l42ps733</div>
+            </div>
+            <div class="link-amount">$49.00<div class="link-token">USDC</div></div>
+            <button class="open-btn">Open →</button>
+          </div>
+          <div class="link-row">
+            <span class="status-badge status-paid">Paid</span>
+            <div>
+              <div class="link-desc">Custom integration</div>
+              <div class="link-customer">Northwind · pl_ckd2gnie</div>
+            </div>
+            <div class="link-amount">$1,200.00<div class="link-token">SOL</div></div>
+            <button class="open-btn">Open →</button>
+          </div>
+          <div class="link-row">
+            <span class="status-badge status-pending">Pending</span>
+            <div>
+              <div class="link-desc">Audit report</div>
+              <div class="link-customer">Pied Piper · pl_05bqyenj</div>
+            </div>
+            <div class="link-amount">$320.00<div class="link-token">USDT</div></div>
+            <button class="open-btn">Open →</button>
+          </div>
+          <div class="link-row">
+            <span class="status-badge status-pending">Pending</span>
+            <div>
+              <div class="link-desc">Q2 license renewal</div>
+              <div class="link-customer">Wonka Labs · pl_aznz1clz</div>
+            </div>
+            <div class="link-amount">$480.00<div class="link-token">SOL</div></div>
+            <button class="open-btn">Open →</button>
+          </div>
+          <div class="link-row">
+            <span class="status-badge status-expired">Expired</span>
+            <div>
+              <div class="link-desc">Setup fee</div>
+              <div class="link-customer">Stark Industries · pl_pgy1r06x</div>
+            </div>
+            <div class="link-amount">$2,500.00<div class="link-token">USDC</div></div>
+            <button class="open-btn">Open →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TOKENS -->
+<div class="tokens-section" id="tokens">
+  <div class="tokens-inner">
+    <div class="section-eyebrow">Supported assets</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:flex-end;">
+      <h2 class="section-title" style="color:var(--cream);">Five assets.<br>One checkout.<br>Any currency out.</h2>
+      <p class="section-sub">Customers pay in the asset they hold. You choose what currency you want to receive — we handle the conversion and settlement automatically.</p>
+    </div>
+    <div class="tokens-grid" style="grid-template-columns: repeat(5,1fr);">
+      <div class="token-card">
+        <div class="tc-icon">$</div>
+        <div class="tc-name">USDC</div>
+        <div class="tc-full">USD Coin · Circle</div>
+        <span class="tc-share">Stablecoin</span>
+      </div>
+      <div class="token-card">
+        <div class="tc-icon">₮</div>
+        <div class="tc-name">USDT</div>
+        <div class="tc-full">Tether USD · Tether</div>
+        <span class="tc-share">Stablecoin</span>
+      </div>
+      <div class="token-card">
+        <div class="tc-icon">◎</div>
+        <div class="tc-name">SOL</div>
+        <div class="tc-full">Solana · Solana Labs</div>
+        <span class="tc-share">Native asset</span>
+      </div>
+      <div class="token-card">
+        <div class="tc-icon">K</div>
+        <div class="tc-name">KZTE</div>
+        <div class="tc-full">EVO · Regional asset</div>
+        <span class="tc-share">Local currency</span>
+      </div>
+      <div class="token-card">
+        <div class="tc-icon">🐸</div>
+        <div class="tc-name">PEPE</div>
+        <div class="tc-full">Pepe · Meme token</div>
+        <span class="tc-share">Community asset</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SOCIAL PROOF -->
+<section>
+  <div class="section-eyebrow">What merchants say</div>
+  <h2 class="section-title">Built for businesses operating globally in crypto</h2>
+  <div class="proof-grid">
+    <div class="proof-card">
+      <div class="proof-stars">★★★★★</div>
+      <p class="proof-text">"My client in Singapore paid in SOL and I received USD straight to my account. No FX desk, no wire delays. This is what cross-border payments should have always been."</p>
+      <div class="proof-author">
+        <div class="proof-avatar">MC</div>
+        <div>
+          <div class="proof-name">Marcus Chen</div>
+          <div class="proof-role">Agency founder, APAC</div>
+        </div>
+      </div>
+    </div>
+    <div class="proof-card">
+      <div class="proof-stars">★★★★★</div>
+      <p class="proof-text">"We invoice enterprise clients in USDT but settle internally in fiat. S1lk PAY handles the whole conversion flow — it cut our finance team's reconciliation work in half."</p>
+      <div class="proof-author">
+        <div class="proof-avatar">AP</div>
+        <div>
+          <div class="proof-name">Anya Patel</div>
+          <div class="proof-role">CFO, Globex Corp</div>
+        </div>
+      </div>
+    </div>
+    <div class="proof-card">
+      <div class="proof-stars">★★★★★</div>
+      <p class="proof-text">"Our customers aren't all crypto-native, but scanning a QR code is easy enough for anyone. The fact that they can pay in PEPE and we get USDC is wild — and it just works."</p>
+      <div class="proof-author">
+        <div class="proof-avatar">JV</div>
+        <div>
+          <div class="proof-name">Jamie Vance</div>
+          <div class="proof-role">Co-founder, Vandelay</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section" id="cta">
+  <h2>The world pays in crypto.<br>You receive what you want.</h2>
+  <p>Free to set up. No monthly fees. First payment link in under a minute.</p>
+  <a href="/login" class="btn-white js-app-start">Start accepting payments →</a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#" class="logo" style="color:var(--cream);">
+          <div class="logo-mark">S</div>
+          S1lk <span>PAY</span>
+        </a>
+        <p>Borderless crypto payment infrastructure for businesses and individuals. Accept any asset, settle in any currency.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="/login" class="js-app-start">Dashboard</a>
+        <a href="#">Payment Links</a>
+        <a href="#">Auto-conversion</a>
+        <a href="#">Analytics</a>
+      </div>
+      <div class="footer-col">
+        <h4>Developers</h4>
+        <a href="#">API docs</a>
+        <a href="#">Webhooks</a>
+        <a href="#">Status page</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 S1lk PAY. Borderless payment infrastructure.</p>
+      <p style="font-family:'DM Mono',monospace; font-size:11px;">sandbox@s1lk.pay</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('.filter-pill').forEach(pill => {
+    pill.addEventListener('click', function() {
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.step-card, .proof-card, .token-card').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    observer.observe(el);
+  });
+
+  (function () {
+    var TOKEN_KEY = 's1lk_token';
+    function appEntryUrl() {
+      try {
+        return sessionStorage.getItem(TOKEN_KEY) ? '/dashboard' : '/login';
+      } catch (e) {
+        return '/login';
+      }
+    }
+    function bindAppStartLinks() {
+      document.querySelectorAll('.js-app-start').forEach(function (el) {
+        el.setAttribute('href', appEntryUrl());
+      });
+    }
+    bindAppStartLinks();
+    window.addEventListener('pageshow', bindAppStartLinks);
+  })();
+</script>
+</body>
+</html>
