@@ -1,0 +1,38 @@
+{
+  "name": "s1lkpay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:dev": "pm2 start ecosystem.dev.config.cjs",
+    "pm2:stop": "pm2 stop s1lkpay",
+    "pm2:stop:dev": "pm2 stop s1lkpay-dev",
+    "pm2:restart": "pm2 restart s1lkpay",
+    "pm2:restart:dev": "pm2 restart s1lkpay-dev",
+    "pm2:logs": "pm2 logs s1lkpay",
+    "pm2:logs:dev": "pm2 logs s1lkpay-dev",
+    "pm2:delete": "pm2 delete s1lkpay",
+    "pm2:delete:dev": "pm2 delete s1lkpay-dev"
+  },
+  "dependencies": {
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "@tanstack/react-query": "^5.100.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.15.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "pm2": "^6.0.13",
+    "vite": "^6.0.3",
+    "vite-plugin-node-polyfills": "^0.26.0"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
